@@ -162,6 +162,7 @@ brownian-particle-optical-trap/
 ├── particle_motion.png
 ├── monte_carlo_histogram.png
 ├── .gitignore
+├── requirements.txt          # Python dependencies
 └── README.md
 ```
 
@@ -195,10 +196,10 @@ python -m venv .venv
 ### 3. Install dependencies
 
 ```bash
-python -m pip install numpy scipy matplotlib streamlit
+python -m pip install -r requirements.txt
 ```
 
-*A pinned `requirements.txt` is planned but is not yet part of this repository version.*
+The `requirements.txt` file lists the four required packages: `numpy`, `scipy`, `matplotlib`, and `streamlit`. Versions are not pinned yet, so installations may resolve to newer compatible releases.
 
 ### 4A. Run the scientific analysis
 
@@ -255,7 +256,7 @@ Open the URL printed in the terminal, typically **http://localhost:8501**. Use t
 - Add estimator diagnostics and confidence intervals.
 - Simulate individual Brownian trajectories with a Langevin equation.
 - Add animation of the moving trap and particle response.
-- Introduce automated tests and a pinned dependency file.
+- Introduce automated tests and pin tested dependency versions for reproducible deployments.
 - Deploy the Streamlit dashboard publicly.
 
 ## Author
