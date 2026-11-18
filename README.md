@@ -1,271 +1,502 @@
+
 # Brownian Particle in an Oscillating Optical Trap
 
-**Numerical Simulation · Parameter Estimation · Monte Carlo Analysis · Streamlit Dashboard**
+**Scientific Computing | Parameter Estimation | Monte Carlo Analysis | Interactive Streamlit Dashboard**
 
-A scientific Python project exploring the **mean motion of an overdamped Brownian particle** in a sinusoidally moving harmonic optical trap. It combines numerical differential-equation solving, synthetic measurement data, relaxation-time estimation, Monte Carlo analysis, frequency-response theory, and interactive visualization.
+A Python-based scientific computing project investigating the mean response of an overdamped Brownian particle confined in an oscillating harmonic optical trap.
 
-> **Scope:** The project simulates the *ensemble-mean trajectory* and adds synthetic measurement noise. It does **not** yet simulate individual stochastic Brownian trajectories using a Langevin equation.
+The project combines mathematical modeling, numerical simulation, synthetic data generation, parameter estimation, Monte Carlo analysis, and interactive visualization.
 
-## Project goals
+## 1. Project Goals
 
-- Model the delayed response of a particle's mean position to a moving optical trap.
-- Solve the governing ODE numerically with SciPy.
-- Generate reproducible noisy synthetic observations.
-- Recover an unknown relaxation time from observations using optimization.
-- Quantify variability in the estimate using Monte Carlo repetitions.
-- Examine amplitude attenuation, phase lag, and time lag across driving frequencies.
-- Explore results in an interactive Streamlit dashboard.
+The main goals of this project are to:
 
-## Physical model
+1. Model the mean motion of a Brownian particle in an oscillating optical trap.
+2. Solve the governing differential equation numerically using SciPy.
+3. Generate reproducible synthetic measurements with Gaussian noise.
+4. Estimate the relaxation time from noisy observations.
+5. Evaluate the variability of parameter estimates through Monte Carlo simulations.
+6. Investigate the frequency-dependent amplitude response and phase lag.
+7. Develop an interactive Streamlit dashboard for exploring the physical model.
 
-The trap center follows
+The project demonstrates how computational physics and statistical data analysis can be integrated into a reproducible Python workflow.
 
-$$
-c(t)=A\sin(\omega t),
-$$
+## 2. Physical Model
 
-where $A$ is the trap amplitude and $\omega$ is the angular driving frequency. The ensemble-mean particle position $m(t)=\langle x(t)\rangle$ obeys
+The optical trap center oscillates sinusoidally:
 
 $$
-\frac{dm}{dt}=-\frac{m(t)-c(t)}{\tau}, \qquad m(0)=0,
+c(t)=A\sin(\omega t)
 $$
 
-where $\tau>0$ is the relaxation time. A larger $\tau$ means a slower response to changes in the trap position. The numerical solution uses `scipy.integrate.odeint`.
+where:
 
-### Synthetic measurements
+- \(A\) is the oscillation amplitude.
+- \(\omega\) is the angular driving frequency.
+- \(t\) is time.
 
-The simulated observations are
-
-$$
-m_{\mathrm{measured}}(t_i)=m_{\mathrm{true}}(t_i)+\epsilon_i,
-\qquad \epsilon_i\sim\mathcal N(0,\sigma^2).
-$$
-
-Here $\sigma$ is the standard deviation of additive Gaussian measurement noise. Fixed random seeds make the example reproducible.
-
-### Parameter estimation
-
-The relaxation time is estimated by minimizing the sum of squared residuals:
+The ensemble-mean particle position \(m(t)\) satisfies the overdamped relaxation equation:
 
 $$
-\hat\tau=\underset{\tau>0}{\operatorname{argmin}}
-\sum_{i=1}^{N}\left[m_{\mathrm{model}}(t_i;\tau)-m_{\mathrm{measured}}(t_i)\right]^2.
+\frac{dm}{dt}=-\frac{m(t)-c(t)}{\tau}
 $$
 
-The implementation uses `scipy.optimize.minimize_scalar` with bounded optimization. The fitter receives the measurements and known trap-driving parameters $A$ and $\omega$; **it does not receive the true relaxation time**.
+where \(\tau\) is the characteristic relaxation time.
 
-### Monte Carlo analysis
-
-The project repeatedly generates new noisy datasets, fits $\tau$ to each one, and examines the distribution of estimates. The sample standard deviation measures variation among *individual fitted relaxation times*. The standard error of their Monte Carlo mean is approximately $s_{\hat\tau}/\sqrt{N_{\mathrm{MC}}}$; these are different quantities.
-
-### Frequency response
-
-After the transient has decayed, the steady-state mean response is
+The initial condition is:
 
 $$
-m_{\mathrm{ss}}(t)=\frac{A}{\sqrt{1+(\omega\tau)^2}}\sin(\omega t-\phi),
-\qquad \phi=\arctan(\omega\tau).
+m(0)=0
 $$
 
-The frequency-response quantities are:
+### Physical interpretation
+
+- **Small relaxation time:** The particle responds quickly to changes in the trap position.
+- **Large relaxation time:** The particle responds more slowly and exhibits stronger attenuation and phase lag at a fixed driving frequency.
+
+The differential equation is solved numerically using `scipy.integrate.odeint`.
+
+**Modeling scope:** The simulation describes the deterministic ensemble-mean position. Synthetic Gaussian measurement noise is added afterward. Individual stochastic Brownian trajectories are not explicitly simulated in the current implementation.
+
+## 3. Synthetic Data Generation
+
+Synthetic measurements are generated by adding Gaussian noise to the numerically calculated mean trajectory:
 
 $$
-\text{Amplitude ratio:}\quad R(\omega)=\frac{1}{\sqrt{1+(\omega\tau)^2}}
+m_{\mathrm{measured}}(t_i)
+=
+m_{\mathrm{true}}(t_i)+\epsilon_i
 $$
 
-$$
-\text{Phase lag:}\quad \phi(\omega)=\arctan(\omega\tau)
-$$
+with
 
 $$
-\text{Equivalent time lag:}\quad \Delta t(\omega)=\frac{\phi(\omega)}{\omega}.
+\epsilon_i\sim\mathcal{N}(0,\sigma^2)
 $$
 
-Increasing the driving frequency suppresses the particle's response amplitude and increases the phase lag toward $90^\circ$. The equivalent time lag decreases at high frequencies, even though the amplitude response becomes very small.
+Here, \(\sigma\) is the standard deviation of the additive Gaussian measurement noise.
 
-## Example results
+Fixed random seeds ensure reproducibility.
 
-Default parameters used in the command-line analysis:
+### Default simulation parameters
 
 | Parameter | Value |
-|---|---:|
-| Trap amplitude $A$ | 1.0 µm |
-| Angular frequency $\omega$ | 1.0 rad/s |
-| True relaxation time $\tau$ | 2.0 s |
-| Measurement noise $\sigma$ | 0.05 µm |
-| Observation interval | 0–20 s |
+|---|---|
+| Trap amplitude | 1.0 µm |
+| Angular frequency | 1.0 rad/s |
+| True relaxation time | 2.0 s |
+| Measurement noise | 0.05 µm |
+| Simulation interval | 0–20 s |
 | Number of observations | 80 |
 | Monte Carlo repetitions | 100 |
 
-Example output with the specified random seeds:
+## 4. Parameter Estimation
+
+The relaxation time is estimated by minimizing the sum of squared residuals between the model prediction and the noisy measurements:
+
+$$
+\hat{\tau}
+=
+\underset{0.1\leq\tau\leq5}{\mathrm{arg\,min}}
+\sum_{i=1}^{N}
+\left[
+m_{\mathrm{model}}(t_i;\tau)
+-
+m_{\mathrm{measured}}(t_i)
+\right]^2
+$$
+
+The implementation uses `scipy.optimize.minimize_scalar` with bounded optimization.
+
+The fitting algorithm receives the measured particle positions and the known driving parameters \(A\) and \(\omega\). It does **not** receive the true relaxation time.
+
+### Example result
 
 ```text
-True relaxation time: 2.0000 s
-Estimated relaxation time: 2.0052 s
-Minimum squared error: 0.118527 µm²
-Number of simulations: 100
-Mean estimated tau: 2.0030 s
-Standard deviation: 0.0367 s
+True relaxation time:       2.0000 s
+Estimated relaxation time:  2.0052 s
+Minimum squared error:      0.118527 µm²
 ```
 
-These results illustrate accurate parameter recovery for the example synthetic dataset; one successful fit does not establish that the estimator is unbiased in general.
+The estimated relaxation time closely matches the true value for this synthetic dataset.
 
-For $\omega=1\,\mathrm{rad/s}$ and $\tau=2\,\mathrm{s}$, the theoretical steady-state amplitude ratio is approximately **0.447**, the phase lag is **63.4°**, and the equivalent time lag is **1.107 s**.
+## 5. Monte Carlo Analysis
 
-## Visualizations
+A single noisy dataset produces one relaxation-time estimate. Different realizations of measurement noise produce slightly different estimates.
 
-### Particle motion and fitted response
+To study this variability, the project performs repeated synthetic experiments.
 
-![Trap center, true mean trajectory, fitted trajectory, and noisy observations](particle_motion.png)
+For each Monte Carlo realization:
 
-The moving trap leads the mean particle position. The fitted and true mean trajectories nearly overlap for the default example, while the synthetic measurements scatter around them.
+1. Generate a new noisy dataset.
+2. Estimate the relaxation time.
+3. Store the estimated value.
+4. Repeat the procedure.
 
-### Monte Carlo histogram
+The mean of the estimates is:
 
-![Distribution of estimated relaxation times](monte_carlo_histogram.png)
+$$
+\overline{\hat{\tau}}
+=
+\frac{1}{N_{\mathrm{MC}}}
+\sum_{j=1}^{N_{\mathrm{MC}}}\hat{\tau}_j
+$$
 
-The histogram shows the variation in fitted relaxation times across repeated noisy datasets, with reference lines for the true relaxation time and the mean estimate.
+The sample standard deviation measures variation among individual fitted relaxation times.
 
-### Frequency response
+The standard error of the Monte Carlo mean is approximately:
 
-![Amplitude ratio, phase lag, and time lag versus angular frequency](frequency_response.png)
+$$
+\mathrm{SE}(\overline{\hat{\tau}})
+=
+\frac{s_{\hat{\tau}}}{\sqrt{N_{\mathrm{MC}}}}
+$$
 
-The three panels summarize the system's **steady-state** response as the driving frequency changes.
+These are different statistical quantities.
 
-## Interactive Streamlit dashboard
+### Example results
 
-The Streamlit app allows users to adjust:
+```text
+Number of simulations:       100
+Mean estimated tau:          2.0030 s
+Sample standard deviation:   0.0367 s
+```
 
-- Trap amplitude $A$ (µm)
-- Angular frequency $\omega$ (rad/s)
-- **True** relaxation time $\tau$ (s), used to generate synthetic data
-- Measurement noise $\sigma$ (µm)
+The histogram of estimated relaxation times provides a visual representation of the estimator's variability.
 
-It displays the estimated relaxation time and estimation error, with selectable views for particle motion, the Monte Carlo histogram, and frequency response.
+## 6. Frequency-Response Analysis
 
-**Important:** The true $\tau$ slider defines the simulated experiment. The optimization independently estimates $\hat\tau$ from noisy observations. A future experimental-data mode could accept uploaded measurements without requiring a known true relaxation time.
+After the initial transient, the particle's mean position approaches a periodic steady state:
 
-## Repository structure
+$$
+m_{\mathrm{ss}}(t)
+=
+\frac{A}{\sqrt{1+(\omega\tau)^2}}
+\sin(\omega t-\phi)
+$$
+
+The phase lag is:
+
+$$
+\phi(\omega)=\arctan(\omega\tau)
+$$
+
+### Amplitude response
+
+$$
+R(\omega)
+=
+\frac{1}{\sqrt{1+(\omega\tau)^2}}
+$$
+
+### Phase lag
+
+$$
+\phi(\omega)=\arctan(\omega\tau)
+$$
+
+### Time lag
+
+$$
+\Delta t(\omega)
+=
+\frac{\arctan(\omega\tau)}{\omega}
+$$
+
+### Physical interpretation
+
+At low frequencies, the mean particle position follows the moving trap relatively closely.
+
+At high frequencies, the oscillation amplitude decreases and the phase lag approaches 90 degrees.
+
+Although the phase lag increases, the corresponding time lag decreases as the frequency increases.
+
+The analytical frequency-response formulas describe the periodic steady state, while the numerical trajectories may include an initial transient.
+
+## 7. Scientific Visualizations
+
+### Particle Motion and Parameter Estimation
+
+![Particle motion and fitted response](particle_motion.png)
+
+This figure compares:
+
+- Oscillating trap center
+- True mean particle position
+- Synthetic noisy measurements
+- Fitted mean particle trajectory
+
+It illustrates the delayed response and the agreement between the true and fitted trajectories.
+
+### Monte Carlo Histogram
+
+![Monte Carlo histogram](monte_carlo_histogram.png)
+
+The histogram displays the distribution of estimated relaxation times across repeated noisy experiments.
+
+Reference lines indicate the true relaxation time and the Monte Carlo mean.
+
+### Frequency Response
+
+![Frequency response](frequency_response.png)
+
+The frequency-response figure displays:
+
+- Amplitude ratio
+- Phase lag
+- Time lag
+
+as functions of the angular driving frequency.
+
+## 8. Interactive Streamlit Dashboard
+
+The project includes an interactive dashboard developed using Streamlit.
+
+Users can modify the simulation parameters and explore the resulting particle dynamics and parameter estimates.
+
+### Adjustable parameters
+
+- Trap amplitude \(A\)
+- Angular frequency \(\omega\)
+- True relaxation time \(\tau\)
+- Measurement noise \(\sigma\)
+
+### Dashboard outputs
+
+- True relaxation time
+- Estimated relaxation time
+- Estimation error
+- Particle-motion visualization
+- Monte Carlo histogram
+- Frequency-response plots
+
+Users can select which visualizations to display.
+
+**Note:** The true relaxation time is used only to generate synthetic observations. The optimization procedure estimates the relaxation time independently from those observations.
+
+## 9. Project Structure
 
 ```text
 brownian-particle-optical-trap/
+│
 ├── src/
-│   ├── app.py                  # Streamlit dashboard
-│   ├── main.py                 # Command-line analysis
-│   ├── model.py                # Trap center and ODE solver
-│   ├── synthetic_data.py       # Noisy synthetic observations
-│   ├── parameter_estimation.py # Relaxation-time fitting
-│   ├── monte_carlo.py          # Repeated noisy experiments
-│   ├── visualization.py        # Particle motion and histogram plots
-│   └── frequency_response.py   # Frequency-response visualization
-├── frequency_response.png
+│   ├── app.py
+│   ├── main.py
+│   ├── model.py
+│   ├── synthetic_data.py
+│   ├── parameter_estimation.py
+│   ├── monte_carlo.py
+│   ├── visualization.py
+│   └── frequency_response.py
+│
 ├── particle_motion.png
 ├── monte_carlo_histogram.png
+├── frequency_response.png
+├── requirements.txt
 ├── .gitignore
-├── requirements.txt          # Python dependencies
 └── README.md
 ```
 
-## Installation and running
+### Module descriptions
 
-**Requirements:** Python 3.10+ and the packages NumPy, SciPy, Matplotlib, and Streamlit.
+| File | Purpose |
+|---|---|
+| `model.py` | Defines trap motion and solves the mean-position differential equation |
+| `synthetic_data.py` | Generates synthetic noisy measurements |
+| `parameter_estimation.py` | Estimates the relaxation time using numerical optimization |
+| `monte_carlo.py` | Performs repeated parameter-estimation experiments |
+| `visualization.py` | Generates particle-motion and Monte Carlo plots |
+| `frequency_response.py` | Calculates and plots the frequency response |
+| `main.py` | Runs the scientific analysis |
+| `app.py` | Provides the interactive Streamlit dashboard |
+| `requirements.txt` | Specifies Python project dependencies |
 
-### 1. Clone the repository
+## 10. Installation
+
+### Prerequisites
+
+- Python 3.10 or newer
+- Git
+- A Python virtual environment is recommended
+
+### Step 1: Clone the repository
 
 ```bash
 git clone https://github.com/maryamakaberian/brownian-particle-optical-trap.git
+
 cd brownian-particle-optical-trap
 ```
 
-### 2. Create a virtual environment
+### Step 2: Create a virtual environment
 
-Linux, macOS, or WSL:
+On Linux, macOS, or WSL:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Windows PowerShell:
+On Windows PowerShell:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-### 3. Install dependencies
+### Step 3: Install dependencies
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-The `requirements.txt` file lists the four required packages: `numpy`, `scipy`, `matplotlib`, and `streamlit`. Versions are not pinned yet, so installations may resolve to newer compatible releases.
+The main dependencies are:
 
-### 4A. Run the scientific analysis
+- NumPy
+- SciPy
+- Matplotlib
+- Streamlit
 
-From the repository root:
+The `requirements.txt` file contains the dependency specifications for the project.
+
+## 11. How to Run
+
+Run the following commands from the repository root.
+
+### Option A: Run the scientific simulation
 
 ```bash
 python src/main.py
 ```
 
-This generates the example data, estimates $\tau$, runs the Monte Carlo analysis, and produces PNG visualizations in the working directory. Depending on the Matplotlib backend, you may need to close plot windows for execution to continue.
+This executes the numerical simulation, generates synthetic measurements, estimates the relaxation time, performs Monte Carlo analysis, and generates the scientific figures.
 
-### 4B. Run the Streamlit dashboard
+Depending on the Matplotlib backend, plot windows may appear during execution.
 
-From the repository root:
+### Option B: Run the Streamlit dashboard
 
 ```bash
 python -m streamlit run src/app.py
 ```
 
-Open the URL printed in the terminal, typically **http://localhost:8501**. Use the sidebar to adjust parameters and choose which plots to display.
+Streamlit starts a local web application.
 
-## Try it yourself
+Open the displayed address, usually:
 
-1. **Explore relaxation:** Keep $A=1\,\mu\mathrm m$ and $\omega=1\,\mathrm{rad/s}$, then vary the true $\tau$ from 0.5 to 4 s. Observe changes in the response amplitude and delay.
-2. **Increase noise:** Raise $\sigma$ while keeping the other parameters fixed. Compare the fitted relaxation time and the spread of measurements.
-3. **Explore uncertainty:** Enable the Monte Carlo histogram and compare repeated estimates with the true parameter.
-4. **Inspect frequency dependence:** Enable the frequency-response view to see amplitude attenuation, phase lag, and time lag across frequencies.
+```text
+http://localhost:8501
+```
 
-## Methods and tools
+Use the sidebar to adjust the simulation parameters and select the visualizations.
 
-| Tool | Purpose |
-|---|---|
-| Python | Modular scientific application |
-| NumPy | Numerical arrays and random sampling |
-| SciPy `odeint` | ODE solution |
-| SciPy `minimize_scalar` | Bounded least-squares parameter fitting |
-| Matplotlib | Scientific plots |
-| Streamlit | Interactive dashboard |
-| Git / GitHub | Version control and sharing |
+## 12. Example: Exploring Relaxation Dynamics
 
-## Assumptions and limitations
+Consider:
 
-- One-dimensional, overdamped, linear relaxation model.
-- Prescribed sinusoidal trap motion.
-- Constant relaxation time.
-- Additive Gaussian measurement noise on the **mean** trajectory.
-- Known trap amplitude and angular frequency during fitting.
-- Numerical trajectories include the initial transient; analytical frequency-response expressions describe steady state.
-- Individual stochastic trajectories and full experimental-data fitting are not yet implemented.
+$$
+A=1\,\mu\mathrm{m}
+$$
 
-## Future improvements
+$$
+\omega=1\,\mathrm{rad/s}
+$$
 
-- Upload and fit real experimental time-series data.
-- Add estimator diagnostics and confidence intervals.
-- Simulate individual Brownian trajectories with a Langevin equation.
-- Add animation of the moving trap and particle response.
-- Introduce automated tests and pin tested dependency versions for reproducible deployments.
-- Deploy the Streamlit dashboard publicly.
+$$
+\tau=2\,\mathrm{s}
+$$
 
-## Author
+The steady-state amplitude ratio is:
 
-**Maryam Akaberian, PhD in Physics**  
-Background in statistical mechanics and theoretical physics; interested in scientific computing, data analysis, and data science.
+$$
+R=\frac{1}{\sqrt{5}}\approx0.447
+$$
 
-[GitHub profile](https://github.com/maryamakaberian) · [Project repository](https://github.com/maryamakaberian/brownian-particle-optical-trap)
+The phase lag is:
+
+$$
+\phi=\arctan(2)\approx63.4^\circ
+$$
+
+The corresponding time lag is:
+
+$$
+\Delta t\approx1.107\,\mathrm{s}
+$$
+
+The particle's mean position therefore oscillates with approximately 44.7% of the trap amplitude and lags behind the trap motion.
+
+### Suggested dashboard experiment
+
+1. Set the amplitude to 1 µm.
+2. Set the angular frequency to 1 rad/s.
+3. Compare relaxation times of 0.5 s and 4.0 s.
+4. Observe changes in the particle response.
+5. Increase the measurement noise.
+6. Examine the fitted relaxation time and Monte Carlo histogram.
+
+This experiment illustrates the relationship between physical relaxation dynamics and parameter-estimation uncertainty.
+
+## 13. Numerical and Statistical Methods
+
+| Method | Python tool | Application |
+|---|---|---|
+| Numerical integration | `scipy.integrate.odeint` | Solve the differential equation |
+| Array operations | NumPy | Numerical calculations |
+| Random sampling | NumPy random generator | Generate Gaussian noise |
+| Numerical optimization | `scipy.optimize.minimize_scalar` | Estimate relaxation time |
+| Monte Carlo simulation | Python and NumPy | Analyze estimator variability |
+| Scientific visualization | Matplotlib | Generate scientific figures |
+| Interactive application | Streamlit | Explore simulation parameters |
+
+## 14. Assumptions and Limitations
+
+The current model assumes:
+
+- One-dimensional overdamped dynamics.
+- A sinusoidally driven harmonic trap.
+- A constant relaxation time.
+- Gaussian additive measurement noise.
+- Known trap amplitude and driving frequency during fitting.
+- Synthetic measurements of the mean particle position.
+- A bounded parameter-estimation interval of 0.1–5 seconds.
+
+The current implementation does not explicitly simulate individual stochastic Brownian trajectories.
+
+## 15. Future Improvements
+
+Possible extensions include:
+
+- Uploading experimental measurements to the dashboard.
+- Estimating relaxation time from real experimental data.
+- Adding confidence intervals and residual diagnostics.
+- Investigating the influence of noise and sampling frequency.
+- Simulating stochastic Brownian trajectories using a Langevin equation.
+- Adding animations of particle and trap motion.
+- Introducing automated tests.
+- Pinning and validating dependency versions.
+- Deploying the Streamlit dashboard publicly.
+
+## 16. Skills Demonstrated
+
+**Scientific computing:** Numerical differential equations, dynamical systems, relaxation processes, and frequency-response analysis.
+
+**Data analysis:** Synthetic data generation, parameter estimation, optimization, and Monte Carlo uncertainty analysis.
+
+**Python programming:** NumPy, SciPy, Matplotlib, Streamlit, and modular software development.
+
+**Reproducibility:** Fixed random seeds, dependency management, and Git-based version control.
+
+**Scientific communication:** Visualization, mathematical modeling, and interpretation of numerical results.
+
+## 17. Author
+
+**Maryam Akaberian, PhD in Physics**
+
+Background in statistical mechanics and theoretical physics, with an interest in scientific computing, data analysis, and data science.
+
+[GitHub Profile](https://github.com/maryamakaberian)
+
+[Project Repository](https://github.com/maryamakaberian/brownian-particle-optical-trap)
 
 ---
 
-*This project demonstrates a reproducible workflow connecting physical modeling, numerical simulation, statistical estimation, and interactive scientific visualization.*
+*This project demonstrates the integration of computational physics, numerical modeling, statistical inference, and interactive scientific visualization using Python.*
